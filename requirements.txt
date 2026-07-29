@@ -1,6 +1,6 @@
-opencv-python
-numpy
-pygame
-mediapipe==0.10.14
 streamlit
 streamlit-webrtc
+opencv-python-headless
+mediapipe==0.10.14
+numpy
+av

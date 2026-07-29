@@ -58,12 +58,14 @@ class AudioEngine:
 
                     print(f"Missing {note_name}")
 
-    def play(self, note):
+            def play(self, note, volume=1.0):
 
-        if note not in self.sounds:
-            return
+                if note not in self.sounds:
+                    return
 
-        channel = self.channels[note]
+                sound = self.sounds[note]
+                sound.set_volume(volume)
 
-        channel.stop()
-        channel.play(self.sounds[note])
+                channel = self.channels[note]
+                channel.stop()
+                channel.play(sound)

@@ -1,81 +1,98 @@
-from piano.keyboard_layout import KeyboardLayout
+import os
+import pygame
 
 
-class Piano:
+class AudioEngine:
 
     def __init__(self):
 
-        self.keys = []
-
-        self.current_width = 0
-
-        # Keeps track of currently pressed notes
-        self.previous_notes = set()
-
-    # ------------------------------------
-    # Create keyboard dynamically
-    # ------------------------------------
-    def create(self, frame_width):
-
-        if frame_width != self.current_width:
-
-            self.current_width = frame_width
-
-            self.keys = KeyboardLayout.create_keyboard(frame_width)
-
-    # ------------------------------------
-    # Draw piano
-    # ------------------------------------
-    def draw(self, frame):
-
-        # White keys first
-        for key in self.keys:
-
-            if not key.is_black:
-                key.draw(frame)
-
-        # Black keys on top
-        for key in self.keys:
-
-            if key.is_black:
-                key.draw(frame)
-
-    # ------------------------------------
-    # Update pressed notes
-    # ------------------------------------
-    def update(self, fingertips):
-
-        # Reset key states
-        for key in self.keys:
-
-            key.is_pressed = False
-
-        current_notes = set()
-
-        # Black keys get priority
-        sorted_keys = sorted(
-            self.keys,
-            key=lambda k: k.is_black,
-            reverse=True
+        pygame.mixer.init(
+            frequency=44100,
+            size=-16,
+            channels=2,
+            buffer=512
         )
 
-        # Check every fingertip
-        for _, (x, y) in fingertips.items():
+        # Enough channels for multiple simultaneous notes
+        pygame.mixer.set_num_channels(64)
 
-            for key in sorted_keys:
+        self.sounds = {}
+        self.channels = {}
 
-                if key.contains(x, y):
+        self.load_sounds()
 
-                    key.is_pressed = True
+    # -------------------------------------------------------
+    # Load Piano Samples
+    # -------------------------------------------------------
 
-                    current_notes.add(key.note)
+    def load_sounds(self):
 
-                    break
+        base_path = os.path.dirname(os.path.abspath(__file__))
 
-        # Newly pressed notes only
-        new_notes = current_notes - self.previous_notes
+        octaves = [3, 4, 5]
 
-        # Store current notes
-        self.previous_notes = current_notes.copy()
+        notes = [
+            "C", "Db", "D", "Eb", "E", "F",
+            "Gb", "G", "Ab", "A", "Bb", "B"
+        ]
 
-        return new_notes, current_notes
+        channel = 0
+
+        for octave in octaves:
+
+            for note in notes:
+
+                note_name = f"{note}{octave}"
+
+                file_path = os.path.join(
+                    base_path,
+                    note_name + ".wav"
+                )
+
+                if os.path.exists(file_path):
+
+                    self.sounds[note_name] = pygame.mixer.Sound(file_path)
+                    self.channels[note_name] = pygame.mixer.Channel(channel)
+
+                    print(f"✅ Loaded {note_name}")
+
+                    channel += 1
+
+                else:
+
+                    print(f"❌ Missing {note_name}")
+
+    # -------------------------------------------------------
+    # Play Note
+    # -------------------------------------------------------
+
+    def play(self, note, volume=1.0):
+
+        if note not in self.sounds:
+            return
+
+        sound = self.sounds[note]
+        sound.set_volume(volume)
+
+        channel = self.channels[note]
+
+        # Restart the note for responsive playing
+        channel.stop()
+        channel.play(sound)
+
+    # -------------------------------------------------------
+    # Stop Note (for future sustain support)
+    # -------------------------------------------------------
+
+    def stop(self, note):
+
+        if note in self.channels:
+            self.channels[note].stop()
+
+    # -------------------------------------------------------
+    # Stop All Notes
+    # -------------------------------------------------------
+
+    def stop_all(self):
+
+        pygame.mixer.stop()
